@@ -13,54 +13,65 @@ class RegiojetScraper:
     """
     Regiojet Scraper class (or requests handler...)
     """
-    def __init__(self, origin, destination, departure_date, currency, vehicle_type):
+    def __init__(self, origin, destination, departure_date, currency, redis):
+        """
+        """
         self.origin = origin
         self.destination = destination
         self.departure_date = departure_date
-        self.vehicle_type = vehicle_type
         self.currency = currency
-        self.locations = {}
-        self.all_vehicle_types = []
+        self.redis = redis
+
+
         self.results = []
 
-    def __get_locations(self):
+    def get_locations(self):
         """
         Method to get locations from API
         """
-        locations_url = "https://brn-ybus-pubapi.sa.cz/restapi/consts/locations"
-        locations_list = requests.get(locations_url).json()
+        redis_key = "cornak:locations:regiojet"
 
-        for country in locations_list:
-            for city in country["cities"]:
-                self.locations[city["name"].lower()] = str(city["id"])
+        locations = utils.retrieve_dict(self.redis, redis_key)
 
-    def __check_valid_values(self):
+        if not locations:
+            locations_url = "https://brn-ybus-pubapi.sa.cz/restapi/consts/locations"
+            locations_list = requests.get(locations_url).json()
+
+            locations = {}
+
+            for country in locations_list:
+                for city in country["cities"]:
+                    locations[city["name"].lower()] = str(city["id"])
+
+            utils.store_dict(self.redis, redis_key, locations)
+
+        return locations
+
+    def check_valid_values(self, locations):
         """
         Method to validate all inputs
         """
-        if self.origin not in self.locations:
-            sys.exit("origin not in database")
+        if self.origin not in locations:
+            return False
 
-        if self.destination not in self.locations:
-            sys.exit("destination not in database")
+        if self.destination not in locations:
+            return False
 
         try:
             datetime.strptime(self.departure_date, "%Y-%m-%d")
         except ValueError:
-            sys.exit("date not valid")
-        
-    def __get_all_vehicle_types(self):
-        """
-        Method to get all vehicle types
-        """
-        pass
+            return False
 
-    def __transform_result(self, found_routes):
+        return True
+
+    def transform_result(self, found_routes):
         """
         Transform response to result
         """
+        results = {}
+
         for route in found_routes["routes"]:
-            self.results.append(
+            results.append(
                 {
                     "departure_datetime": utils.transform_date(route["departureTime"]),
                     "arrival_datetime": utils.transform_date(route["arrivalTime"]),
@@ -74,22 +85,29 @@ class RegiojetScraper:
                     "carrier": "REGIOJET"
                 }
             )
+        
+        return results
 
-    def handler(self):
+    def get_routes(self, locations):
         """
-        Handler for Regiojet Scraper class
+        Route search
         """
+        redis_key = f"cornak:routes:{self.origin}{self.destination}{self.departure_date}"
+        
+        found_routes = utils.retrieve_dict(self.redis, redis_key)
 
-        self.__get_locations()
-        self.__check_valid_values()
+        if not found_routes:
+            routes_url = "https://brn-ybus-pubapi.sa.cz/restapi/routes/search/simple"
+            params = {
+                "tariffs": "REGULAR",
+                "toLocationType": "CITY",
+                "toLocationId": locations[self.destination],
+                "fromLocationType": "CITY",
+                "fromLocationId": locations[self.origin],
+                "departureDate": self.departure_date
+            }
+            found_routes = requests.get(routes_url, params)
 
-        routes_url = "https://brn-ybus-pubapi.sa.cz/restapi/routes/search/simple?tariffs=REGULAR" \
-                    f"&toLocationType=CITY&toLocationId={self.locations[self.destination]}" \
-                    f"&fromLocationType=CITY&fromLocationId={self.locations[self.origin]}" \
-                    f"&departureDate={self.departure_date}"
+            utils.store_dict(self.redis, redis_key, found_routes)
          
-        self.__transform_result(requests.get(routes_url).json())
-
-        return json.dumps(self.results, indent=4)
-
-
+        return found_routes
