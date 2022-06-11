@@ -21,14 +21,13 @@ class Scraper:
     """
     Scraper class
     """
-    def __init__(self, origin, destination, departure_date, currency, carrier, redis = Redis):
+    def __init__(self, origin, destination, departure_date, carrier, redis = Redis):
         """
         Initialization
         """
         self.origin = origin.lower()
         self.destination = destination.lower()
         self.departure_date = departure_date
-        self.currency = currency
         self.carrier = carrier
         self.redis = redis
         self.engine = SCRAPERS[carrier]
@@ -41,7 +40,6 @@ class Scraper:
             self.origin, 
             self.destination, 
             self.departure_date, 
-            self.currency, 
             self.redis
         )
 

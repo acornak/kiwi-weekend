@@ -11,13 +11,12 @@ class RegiojetScraper:
     """
     Regiojet Scraper class (or requests handler...)
     """
-    def __init__(self, origin, destination, departure_date, currency, redis):
+    def __init__(self, origin, destination, departure_date, redis):
         """
         """
         self.origin = origin
         self.destination = destination
         self.departure_date = departure_date
-        self.currency = currency
         self.redis = redis
 
     def get_locations(self):
@@ -99,7 +98,10 @@ class RegiojetScraper:
                     "arrival_datetime": utils.transform_date(route["arrivalTime"]),
                     "source": self.origin.capitalize(),
                     "destination": self.destination.capitalize(),
-                    "fare":  utils.handle_currencies(self.currency, route["priceFrom"]),
+                    "fare":  {
+                        "amount": route["priceFrom"],
+                        "currency": "EUR"
+                    },
                     "type": " ".join(route["vehicleTypes"]).lower(),
                     "source_id": route["departureStationId"],
                     "destination_id": route["arrivalStationId"],
