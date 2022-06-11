@@ -64,30 +64,6 @@ class RegiojetScraper:
 
         return True
 
-    def transform_result(self, found_routes):
-        """
-        Transform response to result
-        """
-        results = {}
-
-        for route in found_routes["routes"]:
-            results.append(
-                {
-                    "departure_datetime": utils.transform_date(route["departureTime"]),
-                    "arrival_datetime": utils.transform_date(route["arrivalTime"]),
-                    "source": self.origin.capitalize(),
-                    "destination": self.destination.capitalize(),
-                    "fare":  utils.handle_currencies(self.currency, route["priceFrom"]),
-                    "type": " ".join(route["vehicleTypes"]).lower(),
-                    "source_id": route["departureStationId"],
-                    "destination_id": route["arrivalStationId"],
-                    "free_seats": route["freeSeatsCount"],
-                    "carrier": "REGIOJET"
-                }
-            )
-        
-        return results
-
     def get_routes(self, locations):
         """
         Route search
@@ -111,3 +87,27 @@ class RegiojetScraper:
             utils.store_dict(self.redis, redis_key, found_routes)
          
         return found_routes
+
+    def transform_result(self, found_routes):
+        """
+        Transform response to result
+        """
+        results = {}
+
+        for route in found_routes["routes"]:
+            results.append(
+                {
+                    "departure_datetime": utils.transform_date(route["departureTime"]),
+                    "arrival_datetime": utils.transform_date(route["arrivalTime"]),
+                    "source": self.origin.capitalize(),
+                    "destination": self.destination.capitalize(),
+                    "fare":  utils.handle_currencies(self.currency, route["priceFrom"]),
+                    "type": " ".join(route["vehicleTypes"]).lower(),
+                    "source_id": route["departureStationId"],
+                    "destination_id": route["arrivalStationId"],
+                    "free_seats": route["freeSeatsCount"],
+                    "carrier": "REGIOJET"
+                }
+            )
+        
+        return results
