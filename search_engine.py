@@ -29,9 +29,9 @@ result = []
 for carrier in list_of_carriers:
     scraper = Scraper(
         parsed_args.origin,
-        parsed_args.destination,
-        parsed_args.currency,
+        parsed_args.destination.lower(),
         parsed_args.departure_date,
+        parsed_args.currency,
         carrier,
         redis
     )

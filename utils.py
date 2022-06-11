@@ -60,5 +60,3 @@ def retrieve_dict(redis: Redis, key: str) -> Optional[dict]:
         return None
 
     return json.loads(maybe_value)
-
-

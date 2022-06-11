@@ -52,14 +52,17 @@ class RegiojetScraper:
         Method to validate all inputs
         """
         if self.origin not in locations:
+            print("origin not found in database")
             return False
 
         if self.destination not in locations:
+            print("destination not found in database")
             return False
 
         try:
             datetime.strptime(self.departure_date, "%Y-%m-%d")
         except ValueError:
+            print("date is not valid")
             return False
 
         return True
@@ -82,7 +85,7 @@ class RegiojetScraper:
                 "fromLocationId": locations[self.origin],
                 "departureDate": self.departure_date
             }
-            found_routes = requests.get(routes_url, params)
+            found_routes = requests.get(routes_url, params).json()
 
             utils.store_dict(self.redis, redis_key, found_routes)
          
@@ -92,7 +95,7 @@ class RegiojetScraper:
         """
         Transform response to result
         """
-        results = {}
+        results = []
 
         for route in found_routes["routes"]:
             results.append(
