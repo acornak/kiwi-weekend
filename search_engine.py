@@ -2,6 +2,7 @@
 RegioJet search engine
 """
 import argparse
+import json 
 
 from redis import Redis
 
@@ -20,7 +21,7 @@ parsed_args = parser.parse_args()
 # Redis setup
 host = "redis.pythonweekend.skypicker.com"
 password = "a9c7a440-cef7-4de1-92ce-e7f922511c0b"
-redis = Redis(host=f"{host}", port=6379, db=0, password=f"{password}", decode_responses=True)
+redis = Redis(host=host, port=6379, db=0, password=password, decode_responses=True)
 
 # Initialize carriers
 list_of_carriers = ["REGIOJET"]
@@ -37,4 +38,4 @@ for carrier in list_of_carriers:
     )
     result.append(scraper.handler())
 
-print(result)
+print(json.dumps(result, indent=4))
