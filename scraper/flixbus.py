@@ -1,18 +1,18 @@
 """
-Scraper itself
+Flixbus scraper itself
 """
 import sys
 import requests
 import json
 
 from datetime import datetime
+import utils
 
-
-class RegiojetScraper:
+class FlixbusScraper:
     """
-    Regiojet Scraper class (or requests handler...)
+    Flixbus scraper class (or requests handler...)
     """
-    def __init__(self, origin, destination, departure_date, vehicle_type, currency):
+    def __init__(self, origin, destination, departure_date, currency, vehicle_type):
         self.origin = origin
         self.destination = destination
         self.departure_date = departure_date
@@ -20,19 +20,27 @@ class RegiojetScraper:
         self.currency = currency
         self.locations = {}
         self.all_vehicle_types = []
-        self.all_currencies = []
         self.results = []
 
     def __get_locations(self):
         """
         Method to get locations from API
         """
-        locations_url = "https://brn-ybus-pubapi.sa.cz/restapi/consts/locations"
-        locations_list = requests.get(locations_url).json()
+        locations_url = "https://map-search.cms.flix.tech/cities/_search"
+        locations_list = requests.get(locations_url).json()["hits"]["hits"]
 
-        for country in locations_list:
-            for city in country["cities"]:
-                self.locations[city["name"].lower()] = str(city["id"])
+        for hit in locations_list:
+            for id, dict in hit["_source"]["connections"].items():
+                print(id)
+                self.__append_location(id, dict["slug"].capitalize())
+
+        
+    def __append_location(self, id, name):
+        """
+        Append location to locations
+        """
+        if name not in self.locations:
+            self.locations[name] = id
 
     def __check_valid_values(self):
         """
@@ -55,20 +63,6 @@ class RegiojetScraper:
         """
         pass
 
-    @staticmethod    
-    def __transform_date(date):
-        """
-        Format date
-        """
-        return datetime.fromisoformat(date).strftime("%Y-%m-%d %H:%M")
-    
-    def __handle_currencies(self):
-        """
-        Method to handle all currencies
-        """
-
-        pass
-
     def __transform_result(self, found_routes):
         """
         Transform response to result
@@ -76,19 +70,16 @@ class RegiojetScraper:
         for route in found_routes["routes"]:
             self.results.append(
                 {
-                    "departure_datetime": self.__transform_date(route["departureTime"]),
-                    "arrival_datetime": self.__transform_date(route["arrivalTime"]),
+                    "departure_datetime": utils.transform_date(route["departureTime"]),
+                    "arrival_datetime": utils.transform_date(route["arrivalTime"]),
                     "source": self.origin.capitalize(),
                     "destination": self.destination.capitalize(),
-                    "fare": {
-                        "amount": route["priceFrom"],
-                        "currency": "EUR"
-                    },
+                    "fare":  utils.handle_currencies(route["priceFrom"]),
                     "type": " ".join(route["vehicleTypes"]).lower(),
                     "source_id": route["departureStationId"],
                     "destination_id": route["arrivalStationId"],
                     "free_seats": route["freeSeatsCount"],
-                    "carrier": "REGIOJET"
+                    "carrier": "FLIXBUS"
                 }
             )
 
@@ -100,8 +91,6 @@ class RegiojetScraper:
         self.__get_locations()
         self.__check_valid_values()
 
-        print(self.departure_date)
-
         routes_url = "https://brn-ybus-pubapi.sa.cz/restapi/routes/search/simple?tariffs=REGULAR" \
                     f"&toLocationType=CITY&toLocationId={self.locations[self.destination]}" \
                     f"&fromLocationType=CITY&fromLocationId={self.locations[self.origin]}" \
@@ -112,3 +101,4 @@ class RegiojetScraper:
         return json.dumps(self.results, indent=4)
 
 
+    routes_url = "https://global.api.flixbus.com/search/service/v2/search?from_city_id=9638&to_city_id=1374&departure_date=12.06.2022&products=%7B%22adult%22%3A1%7D&currency=CZK&locale=cs&search_by=cities&include_after_midnight_rides=1&min_price=1"
