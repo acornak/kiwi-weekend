@@ -1,9 +1,7 @@
 """
 Scraper itself
 """
-import sys
 import requests
-import json
 
 from datetime import datetime
 import utils
@@ -21,9 +19,6 @@ class RegiojetScraper:
         self.departure_date = departure_date
         self.currency = currency
         self.redis = redis
-
-
-        self.results = []
 
     def get_locations(self):
         """
