@@ -30,7 +30,7 @@ def initialize_database(url: str) -> Session:
     """
     engine = create_engine(
         url,
-        echo=True,
+        echo=False,
         poolclass=NullPool
     )
 

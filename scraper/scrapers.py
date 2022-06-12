@@ -39,19 +39,28 @@ class Scraper:
             self.redis
         )
 
-        locations = engine.get_locations()
+        status, locations = engine.get_locations()
 
+        # TODO: move validation here
         valid_values = engine.check_valid_values(locations)
 
+        # TODO:
         if not valid_values:
-            return
+            return (400, "invalid input parameters")
         
-        found_routes = engine.get_routes(locations)
-        transformed_routes = engine.transform_result(found_routes)
+        status, found_routes = engine.get_routes(locations)
+        
+        if not status:
+            return (400, found_routes)
+
+        status, transformed_routes = engine.transform_result(found_routes)
+
+        if not status:
+            return (400, transformed_routes)
 
         if not engine.append_routes_to_database(transformed_routes):
             print("database update was not successful")
 
-        return transformed_routes
+        return (200, transformed_routes)
         
         
