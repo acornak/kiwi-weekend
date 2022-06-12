@@ -1,8 +1,6 @@
 """
 Utils
 """
-import sys
-import requests
 import json
 
 from typing import Optional
@@ -10,7 +8,7 @@ from redis import Redis
 from datetime import datetime
 
 
-def transform_date(date):
+def transform_date(date: str) -> str:
     """
     Format date
     :param date: date to transform

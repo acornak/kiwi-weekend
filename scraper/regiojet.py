@@ -3,7 +3,11 @@ Scraper itself
 """
 import requests
 
+from redis import Redis
 from datetime import datetime
+from sqlalchemy.orm.session import Session
+
+from database.journey_repository import JourneyRepository 
 import utils
 
 
@@ -11,15 +15,17 @@ class RegiojetScraper:
     """
     Regiojet Scraper class (or requests handler...)
     """
-    def __init__(self, origin, destination, departure_date, redis):
+    def __init__(self, origin: str, destination: str, departure_date: str, sql_session: Session, redis: Redis, ):
         """
+        Initialization
         """
         self.origin = origin
         self.destination = destination
         self.departure_date = departure_date
+        self.sql_instance = JourneyRepository(sql_session)
         self.redis = redis
 
-    def get_locations(self):
+    def get_locations(self) -> dict:
         """
         Method to get locations from API
         """
@@ -41,7 +47,7 @@ class RegiojetScraper:
 
         return locations
 
-    def check_valid_values(self, locations):
+    def check_valid_values(self, locations: dict) -> bool:
         """
         Method to validate all inputs
         """
@@ -61,7 +67,7 @@ class RegiojetScraper:
 
         return True
 
-    def get_routes(self, locations):
+    def get_routes(self, locations: dict) -> list:
         """
         Route search
         """
@@ -85,7 +91,7 @@ class RegiojetScraper:
          
         return found_routes
 
-    def transform_result(self, found_routes):
+    def transform_result(self, found_routes: list) -> list:
         """
         Transform response to result
         """
@@ -111,3 +117,13 @@ class RegiojetScraper:
             )
         
         return results
+
+    def append_routes_to_database(self, found_routes: list) -> bool:
+        """
+        Append routes to the database
+        """
+        for route in found_routes:
+            print(route)
+            self.sql_instance.set_journey(route)
+
+        return True

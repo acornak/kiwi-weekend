@@ -1,13 +1,7 @@
 """
 
 """
-import sys
-import requests
-import json
-
-from typing import Optional
 from redis import Redis
-from datetime import datetime
 
 from scraper.regiojet import RegiojetScraper
 from scraper.flixbus import FlixbusScraper
@@ -21,7 +15,7 @@ class Scraper:
     """
     Scraper class
     """
-    def __init__(self, origin, destination, departure_date, carrier, redis = Redis):
+    def __init__(self, origin: str, destination: str, departure_date: str, carrier: str, sql_session, redis = Redis):
         """
         Initialization
         """
@@ -30,9 +24,10 @@ class Scraper:
         self.departure_date = departure_date
         self.carrier = carrier
         self.redis = redis
+        self.sql_session = sql_session
         self.engine = SCRAPERS[carrier]
     
-    def handler(self):
+    def handler(self) -> list:
         """
         Orchestration for scraper class
         """
@@ -40,17 +35,23 @@ class Scraper:
             self.origin, 
             self.destination, 
             self.departure_date, 
+            self.sql_session,
             self.redis
         )
 
         locations = engine.get_locations()
+
         valid_values = engine.check_valid_values(locations)
 
         if not valid_values:
             return
         
         found_routes = engine.get_routes(locations)
+        transformed_routes = engine.transform_result(found_routes)
 
-        return engine.transform_result(found_routes)
+        if not engine.append_routes_to_database(transformed_routes):
+            print("database update was not successful")
+
+        return transformed_routes
         
         
