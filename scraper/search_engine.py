@@ -1,24 +1,15 @@
 """
 RegioJet search engine
 """
-import argparse
-import json 
-
 from redis import Redis
 
 from scraper.scrapers import Scraper
 from database.init_database import initialize_database
 
-
-if __name__ == "__main__":
-    # Arguments
-    parser = argparse.ArgumentParser()
-    parser.add_argument("origin", type=str)
-    parser.add_argument("destination", type=str)
-    parser.add_argument("departure_date", type=str)
-
-    parsed_args = parser.parse_args()
-
+def call_search_engine(origin: str, destination: str, departure_date: str) -> str:
+    """
+    Function to call search
+    """
     # Redis setup
     redis_host = "redis.pythonweekend.skypicker.com"
     redis_password = "a9c7a440-cef7-4de1-92ce-e7f922511c0b"
@@ -42,13 +33,19 @@ if __name__ == "__main__":
 
     for carrier in list_of_carriers:
         scraper = Scraper(
-            parsed_args.origin,
-            parsed_args.destination.lower(),
-            parsed_args.departure_date,
+            origin.lower(),
+            destination.lower(),
+            departure_date,
             carrier,
             sql_session,
             redis_session
         )
-        result += scraper.handler()
+        status, message = scraper.handler()
 
-    #print(json.dumps(result, indent=4))
+        # todo
+        if status == 200:
+            result += message
+        else:
+            print(f"{carrier} search was not successful: {message}")
+
+    return result

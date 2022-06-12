@@ -34,18 +34,21 @@ class RegiojetScraper:
         locations = utils.retrieve_dict(self.redis, redis_key)
 
         if not locations:
-            locations_url = "https://brn-ybus-pubapi.sa.cz/restapi/consts/locations"
-            locations_list = requests.get(locations_url).json()
+            try:
+                locations_url = "https://brn-ybus-pubapi.sa.cz/restapi/consts/locations"
+                locations_list = requests.get(locations_url).json()
 
-            locations = {}
+                locations = {}
 
-            for country in locations_list:
-                for city in country["cities"]:
-                    locations[city["name"].lower()] = str(city["id"])
+                for country in locations_list:
+                    for city in country["cities"]:
+                        locations[city["name"].lower()] = str(city["id"])
+            except Exception as exc:
+                return (False, exc)
 
             utils.store_dict(self.redis, redis_key, locations)
 
-        return locations
+        return (True, locations)
 
     def check_valid_values(self, locations: dict) -> bool:
         """
@@ -71,6 +74,8 @@ class RegiojetScraper:
         """
         Route search
         """
+        #TODO: check Redis first, then SQL (but add to Redis) and only after that call APIs
+
         redis_key = f"cornak:routes:{self.origin}{self.destination}{self.departure_date}"
         
         found_routes = utils.retrieve_dict(self.redis, redis_key)
@@ -85,11 +90,15 @@ class RegiojetScraper:
                 "fromLocationId": locations[self.origin],
                 "departureDate": self.departure_date
             }
-            found_routes = requests.get(routes_url, params).json()
+
+            try:
+                found_routes = requests.get(routes_url, params).json()
+            except Exception as exc:
+                return (False, exc)
 
             utils.store_dict(self.redis, redis_key, found_routes)
          
-        return found_routes
+        return (True, found_routes)
 
     def transform_result(self, found_routes: list) -> list:
         """
@@ -98,32 +107,35 @@ class RegiojetScraper:
         results = []
 
         for route in found_routes["routes"]:
-            results.append(
-                {
-                    "departure_datetime": utils.transform_date(route["departureTime"]),
-                    "arrival_datetime": utils.transform_date(route["arrivalTime"]),
-                    "source": self.origin.capitalize(),
-                    "destination": self.destination.capitalize(),
-                    "fare":  {
-                        "amount": route["priceFrom"],
-                        "currency": "EUR"
-                    },
-                    "type": " ".join(route["vehicleTypes"]).lower(),
-                    "source_id": route["departureStationId"],
-                    "destination_id": route["arrivalStationId"],
-                    "free_seats": route["freeSeatsCount"],
-                    "carrier": "REGIOJET"
-                }
-            )
+            try:
+                results.append(
+                    {
+                        "departure_datetime": utils.transform_date(route["departureTime"]),
+                        "arrival_datetime": utils.transform_date(route["arrivalTime"]),
+                        "source": self.origin.capitalize(),
+                        "destination": self.destination.capitalize(),
+                        "fare":  {
+                            "amount": route["priceFrom"],
+                            "currency": "EUR"
+                        },
+                        "type": " ".join(route["vehicleTypes"]).lower(),
+                        "source_id": route["departureStationId"],
+                        "destination_id": route["arrivalStationId"],
+                        "free_seats": route["freeSeatsCount"],
+                        "carrier": "REGIOJET"
+                    }
+                )
+
+            except Exception as exc:
+                 return (False, exc)
         
-        return results
+        return (True, results)
 
     def append_routes_to_database(self, found_routes: list) -> bool:
         """
         Append routes to the database
         """
         for route in found_routes:
-            print(route)
             self.sql_instance.set_journey(route)
 
         return True
